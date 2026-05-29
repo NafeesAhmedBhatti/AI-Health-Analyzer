@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String
+  avatarUrl     String?
+  dateOfBirth   DateTime?
+  gender        String?
+  phone         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  healthProfile    HealthProfile?
+  vitals           Vital[]
+  symptomChecks    SymptomCheck[]
+  labReports       LabReport[]
+  medications      Medication[]
+  medInteractions  MedInteraction[]
+  nutritionPlans   NutritionPlan[]
+  moodEntries      MoodEntry[]
+  skinAnalyses     SkinAnalysis[]
+  familyHistory    FamilyHistory[]
+  healthAlerts     HealthAlert[]
+  healthReports    HealthReport[]
+  familyMembers    FamilyMember[]
+  settings         UserSettings?
+
+  @@map("users")
+}
+
+model HealthProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  bloodType         String?
+  heightCm          Float?
+  weightKg          Float?
+  allergies         Json?
+  chronicConditions Json?
+  medicationsList   Json?
+  emergencyContact  Json?
+  lifestyle         Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyMember  FamilyMember?
+
+  @@map("health_profiles")
+}
+
+model Vital {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String
+  value       Float
+  unit        String
+  recordedAt  DateTime
+  notes       String?
+  source      String   @default("manual")
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, recordedAt])
+  @@map("vitals")
+}
+
+model SymptomCheck {
+  id             String   @id @default(cuid())
+  userId         String
+  symptomsInput  Json
+  aiResponse     Json?
+  urgency        String?
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("symptom_checks")
+}
+
+model LabReport {
+  id           String    @id @default(cuid())
+  userId       String
+  fileName     String
+  filePath     String
+  fileType     String
+  extractedData Json?
+  aiSummary    String?   @db.Text
+  flags        Json?
+  status       String    @default("pending")
+  isActive     Boolean   @default(false)
+  reportDate   DateTime?
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("lab_reports")
+}
+
+model Medication {
+  id           String    @id @default(cuid())
+  userId       String
+  name         String
+  dosage       String
+  frequency    String
+  startDate    DateTime
+  endDate      DateTime?
+  prescribedBy String?
+  notes        String?
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("medications")
+}
+
+model MedInteraction {
+  id              String   @id @default(cuid())
+  userId          String
+  medicationIds   Json
+  interactionType String
+  severity        String
+  description     String
+  recommendation  String?
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("med_interactions")
+}
+
+model NutritionPlan {
+  id          String   @id @default(cuid())
+  userId      String
+  goals       Json
+  planData    Json
+  aiGenerated Boolean  @default(true)
+  validFrom   DateTime @default(now())
+  validTo     DateTime?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("nutrition_plans")
+}
+
+model MoodEntry {
+  id              String   @id @default(cuid())
+  userId          String
+  moodScore       Int
+  anxietyScore    Int?
+  energyScore     Int?
+  sleepQuality    Int?
+  notes           String?  @db.Text
+  tags            Json?
+  screeningType   String?
+  screeningResult Json?
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("mood_entries")
+}
+
+model SkinAnalysis {
+  id              String   @id @default(cuid())
+  userId          String
+  imagePath       String
+  bodyRegion      String?
+  description     String?  @db.Text
+  aiAssessment    Json?
+  conditionName   String?
+  confidence      Float    @default(0)
+  severity        String?
+  recommendations String?  @db.Text
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("skin_analyses")
+}
+
+model FamilyHistory {
+  id         String   @id @default(cuid())
+  userId     String
+  relation   String
+  name       String?
+  conditions Json
+  side       String?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("family_history")
+}
+
+model HealthAlert {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String   @db.Text
+  message   String   @db.Text
+  severity  String   @default("info")
+  read      Boolean  @default(false)
+  actionUrl String?  @db.Text
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@map("health_alerts")
+}
+
+model HealthReport {
+  id            String   @id @default(cuid())
+  userId        String
+  reportType    String
+  title         String
+  summary       String?   @db.Text
+  data          Json
+  pdfData       String?   @db.LongText
+  pdfPath       String?
+  generatedAt   DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("health_reports")
+}
+
+model FamilyMember {
+  id             String    @id @default(cuid())
+  ownerUserId    String
+  name           String
+  relation       String
+  dateOfBirth    DateTime?
+  gender         String?
+  healthProfileId String? @unique
+  createdAt      DateTime  @default(now())
+
+  owner        User          @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  healthProfile HealthProfile? @relation(fields: [healthProfileId], references: [id])
+
+  @@index([ownerUserId])
+  @@map("family_members")
+}
+
+model UserSettings {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  units                 String   @default("metric")       // metric | imperial
+  language              String   @default("en")
+  theme                 String   @default("dark")         // dark | light
+  emailNotifications    Boolean  @default(true)
+  pushNotifications     Boolean  @default(true)
+  weeklyReportEmail     Boolean  @default(true)
+  criticalAlertsOnly    Boolean  @default(false)
+  shareDataWithDoctor   Boolean  @default(false)
+  dataRetentionDays     Int      @default(365)
+  aiModelPreference     String   @default("balanced")     // balanced | conservative | aggressive
+  dashboardLayout       Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}

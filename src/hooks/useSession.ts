@@ -1,0 +1,1 @@
+export { default as useSession } from 'next-auth/react';
