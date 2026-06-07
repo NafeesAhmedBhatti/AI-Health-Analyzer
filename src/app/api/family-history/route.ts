@@ -17,7 +17,7 @@ export async function GET() {
     let riskAnalysis: any = null;
     if (members.length > 0) {
       try {
-        const familyData = members.map(m => `${m.relation}: ${typeof m.conditions === 'string' ? m.conditions : JSON.stringify(m.conditions)}`).join('\n');
+const familyData = members.map((m: any) => `${m.relation}: ${typeof m.conditions === 'string' ? m.conditions : JSON.stringify(m.conditions)}`);
         // Get user's own conditions
         const user = await prisma.user.findUnique({ where: { id: userId }, include: { healthProfile: true } });
         const userConditions = user?.healthProfile?.chronicConditions ? JSON.stringify(user.healthProfile.chronicConditions) : 'None';
@@ -47,8 +47,8 @@ Return JSON: {"riskFactors":[{"condition":"name","risk":"low|moderate|high","exp
     }
 
     return NextResponse.json({
-      members: members.map((m) => ({
-        id: m.id,
+members: members.map((m: any) => ({
+      id: m.id,
         name: m.name,
         relation: m.relation,
         conditions: typeof m.conditions === 'string' ? m.conditions : JSON.stringify(m.conditions),

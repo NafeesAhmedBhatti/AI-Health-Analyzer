@@ -1,5 +1,4 @@
 'use client';
-
 import { useRef, useEffect, useState } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import {
@@ -123,27 +122,38 @@ function FeatureCard({ icon: Icon, title, desc, color, delay }: {
 
 /* ── Particle system ── */
 function Particles() {
-  const particles = Array.from({ length: 30 }, (_, i) => ({
-    id: i,
-    left: `${Math.random() * 100}%`,
-    top: `${Math.random() * 100}%`,
-    size: Math.random() * 2.5 + 1,
-    duration: Math.random() * 8 + 6,
-    delay: Math.random() * 5,
-    opacity: Math.random() * 0.3 + 0.1,
-  }));
+  const [particles, setParticles] = useState<any[]>([]);
+
+  useEffect(() => {
+    setParticles(
+      Array.from({ length: 30 }, (_, i) => ({
+        id: i,
+        left: `${Math.random() * 100}%`,
+        top: `${Math.random() * 100}%`,
+        size: Math.random() * 2.5 + 1,
+        duration: Math.random() * 8 + 6,
+        delay: Math.random() * 5,
+        opacity: Math.random() * 0.3 + 0.1,
+      }))
+    );
+  }, []);
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {particles.map(p => (
-        <div key={p.id} className="absolute rounded-full particle-float"
+      {particles.map((p) => (
+        <div
+          key={p.id}
+          className="absolute rounded-full particle-float"
           style={{
-            width: p.size, height: p.size,
-            left: p.left, top: p.top,
+            width: p.size,
+            height: p.size,
+            left: p.left,
+            top: p.top,
             background: `radial-gradient(circle, rgba(0,194,255,${p.opacity + 0.2}), rgba(123,97,255,${p.opacity}))`,
             animationDuration: `${p.duration}s`,
             animationDelay: `${p.delay}s`,
-          }} />
+          }}
+        />
       ))}
     </div>
   );

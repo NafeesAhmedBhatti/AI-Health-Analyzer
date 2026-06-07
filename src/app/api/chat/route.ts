@@ -36,17 +36,29 @@ export async function POST(req: NextRequest) {
       if (flags?.recommendations?.length) healthContext.push(`Active Recommendations: ${flags.recommendations.slice(0, 3).map((r: any) => typeof r === 'string' ? r : r.text).join('; ')}`);
     }
     if (latestVitals.length > 0) {
-      const vitalsStr = latestVitals.slice(0, 5).map(v => `${v.type}: ${v.value} ${v.unit}`).join(', ');
+const vitalsStr = latestVitals
+  .slice(0, 5)
+  .map((v: any) => `${v.type}: ${v.value} ${v.unit}`)
+  .join(', ');
       healthContext.push(`Recent Vitals: ${vitalsStr}`);
     }
     if (activeMeds.length > 0) {
-      healthContext.push(`Active Medications: ${activeMeds.map(m => `${m.name} ${m.dosage}`).join(', ')}`);
+healthContext.push(
+  `Active Medications: ${activeMeds
+    .map((m: any) => `${m.name} ${m.dosage}`)
+    .join(', ')}`
+);
     }
     if (latestMood) {
       healthContext.push(`Mood: ${latestMood.moodScore}/5, Anxiety: ${latestMood.anxietyScore}/10, Sleep: ${latestMood.sleepQuality}/10`);
     }
     if (recentAlerts.length > 0) {
-      healthContext.push(`Active Alerts: ${recentAlerts.slice(0, 3).map(a => a.title).join(', ')}`);
+healthContext.push(
+  `Active Alerts: ${recentAlerts
+    .slice(0, 3)
+    .map((a: any) => a.title)
+    .join(', ')}`
+);
     }
 
     const systemPrompt = `You are **Nafexa AI** — a friendly and knowledgeable AI health companion built into the AI Health Analyzer platform. You help users understand their lab results, medications, symptoms, and overall health.
