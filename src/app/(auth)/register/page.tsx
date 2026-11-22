@@ -63,9 +63,9 @@ export default function RegisterPage() {
       });
 
       if (result?.ok) {
-        router.push('/dashboard');
+        window.location.href = '/dashboard';
       } else {
-        router.push('/login');
+        window.location.href = '/login';
       }
     } catch {
       setError('Something went wrong. Please try again.');

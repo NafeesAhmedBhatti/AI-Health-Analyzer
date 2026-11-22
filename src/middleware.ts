@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
+const AUTH_SECRET = process.env.NEXTAUTH_SECRET || 'ai-health-analyzer-jwt-secret-key';
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -14,7 +16,7 @@ export async function middleware(req: NextRequest) {
   if (isPublicRoute) {
     // If already logged in and trying to access login/register, redirect to dashboard
     if ((pathname.startsWith('/login') || pathname.startsWith('/register'))) {
-      const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+      const token = await getToken({ req, secret: AUTH_SECRET });
       if (token) {
         return NextResponse.redirect(new URL('/dashboard', req.url));
       }

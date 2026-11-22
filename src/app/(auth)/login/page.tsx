@@ -28,8 +28,9 @@ export default function LoginPage() {
 
       if (result?.error) {
         setError('Invalid email or password. Please try again.');
+        setLoading(false);
       } else {
-        router.push('/dashboard');
+        window.location.href = '/dashboard';
       }
     } catch {
       setError('Something went wrong. Please try again.');
@@ -163,7 +164,7 @@ export default function LoginPage() {
                 setError('');
                 setLoading(true);
                 const res = await signIn('credentials', { email: 'demo@aihealth.app', password: 'DemoPass123!', redirect: false });
-                if (res?.ok) router.push('/dashboard');
+                if (res?.ok) window.location.href = '/dashboard';
                 else { setError('Demo sign in failed.'); setLoading(false); }
               }}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-cyan-300 font-semibold text-xs border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 transition"
