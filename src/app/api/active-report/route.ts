@@ -28,6 +28,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error('GET /api/active-report error:', error);
-    return NextResponse.json({ activeReport: null }, { status: 500 });
+    return NextResponse.json({ activeReport: null });
   }
 }

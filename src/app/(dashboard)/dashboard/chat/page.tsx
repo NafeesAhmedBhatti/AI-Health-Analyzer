@@ -6,6 +6,48 @@ import { Send, Bot, User, Sparkles, Trash2, AlertCircle } from 'lucide-react';
 
 interface Message { role: 'user' | 'assistant'; content: string; }
 
+function renderInlineMarkdown(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+      return <strong key={idx} className="font-semibold text-white">{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+      return <em key={idx} className="italic text-gray-200">{part.slice(1, -1)}</em>;
+    }
+    if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+      return <code key={idx} className="px-1.5 py-0.5 rounded bg-white/10 text-neon-blue text-xs">{part.slice(1, -1)}</code>;
+    }
+    return <span key={idx}>{part}</span>;
+  });
+}
+
+function FormattedMessage({ content }: { content: string }) {
+  const lines = content.split('\n');
+  return (
+    <div className="space-y-1.5 break-words">
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={idx} className="h-1" />;
+        const headingMatch = trimmed.match(/^#{1,3}\s+(.+)$/);
+        if (headingMatch) {
+          return <h4 key={idx} className="font-semibold text-white text-sm pt-1">{renderInlineMarkdown(headingMatch[1])}</h4>;
+        }
+        const bulletMatch = trimmed.match(/^(?:[-*]|\d+\.)\s+(.+)$/);
+        if (bulletMatch) {
+          return (
+            <div key={idx} className="flex items-start gap-2 pl-1">
+              <span className="text-neon-blue mt-1.5 w-1.5 h-1.5 rounded-full bg-neon-blue/80 flex-shrink-0" />
+              <span>{renderInlineMarkdown(bulletMatch[1])}</span>
+            </div>
+          );
+        }
+        return <p key={idx}>{renderInlineMarkdown(line)}</p>;
+      })}
+    </div>
+  );
+}
+
 const SUGGESTIONS = [
   'What do my lab results mean?',
   'Explain my current medications',
@@ -133,7 +175,11 @@ export default function ChatPage() {
                   ? 'bg-neon-blue/10 text-white border border-neon-blue/20 rounded-br-md'
                   : 'bg-dark-surface/60 text-gray-300 border border-white/[0.06] rounded-bl-md'
               }`}>
-                <div className="whitespace-pre-wrap">{msg.content}</div>
+                {msg.role === 'assistant' ? (
+                  <FormattedMessage content={msg.content} />
+                ) : (
+                  <div className="whitespace-pre-wrap">{msg.content}</div>
+                )}
               </div>
               {msg.role === 'user' && (
                 <div className="w-7 h-7 rounded-lg bg-neon-purple/10 flex items-center justify-center flex-shrink-0 mt-1">
@@ -151,7 +197,7 @@ export default function ChatPage() {
               <Bot className="w-3.5 h-3.5 text-neon-blue" />
             </div>
             <div className="max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed bg-dark-surface/60 text-gray-300 border border-white/[0.06] rounded-bl-md">
-              <div className="whitespace-pre-wrap">{streamText}<span className="inline-block w-1.5 h-4 bg-neon-blue/60 ml-0.5 animate-pulse" /></div>
+              <FormattedMessage content={streamText} />
             </div>
           </div>
         )}

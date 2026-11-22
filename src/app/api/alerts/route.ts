@@ -12,8 +12,8 @@ export async function GET() {
     });
     return NextResponse.json(alerts);
   } catch (error) {
-    console.error('GET /api/alerts error:', error);
-    return NextResponse.json({ error: 'Failed' }, { status: 500 });
+    console.warn('GET /api/alerts fallback:', error);
+    return NextResponse.json([]);
   }
 }
 

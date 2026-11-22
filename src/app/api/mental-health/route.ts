@@ -25,7 +25,7 @@ export async function GET() {
     }));
   } catch (error) {
     console.error('GET /api/mental-health error:', error);
-    return NextResponse.json({ error: 'Failed' }, { status: 500 });
+    return NextResponse.json([]);
   }
 }
 

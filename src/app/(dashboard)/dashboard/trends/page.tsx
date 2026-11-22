@@ -31,7 +31,11 @@ export default function TrendsPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/trends?days=${days}`).then(r => r.json()).then(d => setData(d)).catch(console.error).finally(() => setLoading(false));
+    fetch(`/api/trends?days=${days}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => setData(d))
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, [days]);
 
   if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><div className="w-10 h-10 border-2 border-white/20 border-t-neon-blue rounded-full animate-spin" /></div>;
@@ -44,8 +48,10 @@ export default function TrendsPage() {
     </div>
   );
 
-  const { vitalsByType, moodData, healthScores } = data;
-  const vitalTypes = Object.keys(vitalsByType).filter(t => vitalsByType[t].length > 0);
+  const vitalsByType: Record<string, any[]> = data.vitalsByType && typeof data.vitalsByType === 'object' ? data.vitalsByType : {};
+  const moodData: any[] = Array.isArray(data.moodData) ? data.moodData : [];
+  const healthScores: any[] = Array.isArray(data.healthScores) ? data.healthScores : [];
+  const vitalTypes = Object.keys(vitalsByType).filter(t => Array.isArray(vitalsByType[t]) && vitalsByType[t].length > 0);
   const hasVitals = vitalTypes.length > 0;
   const hasMood = moodData.length > 0;
   const hasScores = healthScores.length > 0;

@@ -50,34 +50,45 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => window.removeEventListener('user-name-changed', handler);
   }, []);
 
-  const handleLogout = () => { signOut({ callbackUrl: '/' }); };
+  const handleLogout = async () => {
+    try {
+      await signOut({ redirect: false });
+    } finally {
+      window.location.href = '/';
+    }
+  };
   const userInitial = userName.charAt(0).toUpperCase();
 
   const currentPage = navItems.find(item => pathname === item.href) ||
     (pathname === '/dashboard/settings' ? { label: 'Settings', icon: Settings, color: 'text-neon-blue' } : null);
 
-  const SidebarContent = () => (
+  const SidebarContent = ({ inMobileDrawer = false }: { inMobileDrawer?: boolean }) => {
+    const isCollapsed = inMobileDrawer ? false : collapsed;
+    return (
     <div className="flex flex-col h-full">
       {/* ── Sidebar Header ── */}
-      <div className="p-4 flex items-center justify-between border-b border-white/[0.06] min-h-[60px]">
-        <div className="flex items-center gap-3">
+      <div className="p-4 flex items-center justify-between gap-2 border-b border-white/[0.06] min-h-[60px]">
+        <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center flex-shrink-0 shadow-[0_0_20px_rgba(0,212,255,0.2)]">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
-          {!collapsed && (
-            <span className="text-lg font-bold bg-gradient-to-r from-neon-blue to-neon-purple bg-clip-text text-transparent whitespace-nowrap">
+          {!isCollapsed && (
+            <span className="text-base font-bold bg-gradient-to-r from-neon-blue to-neon-purple bg-clip-text text-transparent whitespace-nowrap truncate">
               AI Health Analyzer
             </span>
           )}
         </div>
-        {/* Collapse button INSIDE the sidebar header */}
-        {!collapsed && (
-          <button onClick={() => setCollapsed(true)} className="text-gray-500 hover:text-white hover:bg-white/[0.06] p-1.5 rounded-lg transition-colors" title="Collapse sidebar">
+        {/* Collapse / Close button INSIDE the sidebar header */}
+        {inMobileDrawer ? (
+          <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-white hover:bg-white/[0.06] p-1.5 rounded-lg transition-colors flex-shrink-0" title="Close menu" aria-label="Close menu">
             <ChevronLeft className="w-4 h-4" />
           </button>
-        )}
-        {collapsed && (
-          <button onClick={() => setCollapsed(false)} className="text-gray-500 hover:text-white hover:bg-white/[0.06] p-1.5 rounded-lg transition-colors mt-1" title="Expand sidebar">
+        ) : !isCollapsed ? (
+          <button onClick={() => setCollapsed(true)} className="text-gray-500 hover:text-white hover:bg-white/[0.06] p-1.5 rounded-lg transition-colors flex-shrink-0" title="Collapse sidebar" aria-label="Collapse sidebar">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        ) : (
+          <button onClick={() => setCollapsed(false)} className="text-gray-500 hover:text-white hover:bg-white/[0.06] p-1.5 rounded-lg transition-colors mt-1 flex-shrink-0" title="Expand sidebar" aria-label="Expand sidebar">
             <ChevronRight className="w-4 h-4" />
           </button>
         )}
@@ -87,13 +98,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
-            <a key={item.href} href={item.href} className="block" title={collapsed ? item.label : undefined}>
+            <a key={item.href} href={item.href} onClick={() => inMobileDrawer && setSidebarOpen(false)} className="block" title={isCollapsed ? item.label : undefined}>
               <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors duration-100 group relative ${
                 isActive ? 'bg-white/[0.08] shadow-[0_0_15px_rgba(0,212,255,0.06)]' : 'hover:bg-white/[0.03]'
               }`}>
                 {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-5 bg-neon-blue rounded-full shadow-[0_0_8px_rgba(0,212,255,0.5)]" />}
                 <item.icon className={`w-[16px] h-[16px] flex-shrink-0 ${isActive ? item.color : 'text-gray-500 group-hover:text-gray-300'} transition-colors`} />
-                {!collapsed && (
+                {!isCollapsed && (
                   <span className={`text-[13px] whitespace-nowrap ${isActive ? 'text-white font-medium' : 'text-gray-400 group-hover:text-gray-200'} transition-colors`}>
                     {item.label}
                   </span>
@@ -105,12 +116,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </nav>
 
       <div className="p-2 border-t border-white/[0.06] space-y-0.5">
-        <a href="/dashboard/settings" className="block" title={collapsed ? 'Settings' : undefined}>
+        <a href="/dashboard/settings" onClick={() => inMobileDrawer && setSidebarOpen(false)} className="block" title={isCollapsed ? 'Settings' : undefined}>
           <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors duration-100 group ${
             pathname === '/dashboard/settings' ? 'bg-white/[0.08]' : 'hover:bg-white/[0.03]'
           }`}>
             <Settings className={`w-[16px] h-[16px] flex-shrink-0 ${pathname === '/dashboard/settings' ? 'text-neon-blue' : 'text-gray-500 group-hover:text-gray-300'} transition-colors`} />
-            {!collapsed && (
+            {!isCollapsed && (
               <span className={`text-[13px] ${pathname === '/dashboard/settings' ? 'text-white font-medium' : 'text-gray-400 group-hover:text-gray-200'} transition-colors`}>
                 Settings
               </span>
@@ -119,11 +130,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </a>
 <button onClick={handleLogout} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/[0.06] transition-colors w-full" aria-label="Logout">
 	          <LogOut className="w-[16px] h-[16px] flex-shrink-0" />
-	          {!collapsed && <span className="text-[13px]">Logout</span>}
+	          {!isCollapsed && <span className="text-[13px]">Logout</span>}
         </button>
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <div className="flex h-screen bg-dark-bg overflow-hidden">
@@ -142,7 +154,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <>
 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
 	          <aside className="fixed left-0 top-0 bottom-0 w-[260px] bg-dark-surface border-r border-white/[0.06] z-50 lg:hidden" role="navigation" aria-label="Mobile navigation">
-            <SidebarContent />
+            <SidebarContent inMobileDrawer />
           </aside>
         </>
       )}
