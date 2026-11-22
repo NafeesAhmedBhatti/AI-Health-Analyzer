@@ -31,7 +31,7 @@ Think of it as that one medically-informed friend who actually reads your report
 <br />
 
 <p align="center">
-  <a href="https://ai-health-analyzer-l6mul3.drytis.dev/"><strong>🌐 Live Demo</strong></a>
+  <a href="https://ai-health-analyzer-phi.vercel.app/"><strong>🌐 Live Demo</strong></a>
   &nbsp;&nbsp;·&nbsp;&nbsp;
   <a href="https://github.com/NafeesAhmedBhatti/AI-Health-Analyzer"><strong>📦 GitHub Repo</strong></a>
 </p>

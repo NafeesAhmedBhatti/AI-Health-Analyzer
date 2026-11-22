@@ -112,12 +112,7 @@ export default function RegisterPage() {
 
       {/* Right side — Register Form */}
       <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md"
-        >
+        <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.2)]">
@@ -142,7 +137,7 @@ export default function RegisterPage() {
             </motion.div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div>
               <label htmlFor="name" className="block text-sm text-gray-400 mb-2">Full Name</label>
               <div className="relative">
@@ -240,11 +235,11 @@ export default function RegisterPage() {
           </div>
 
           <div className="mt-4 pt-4 border-t border-white/[0.06] text-center">
-            <Link href="/" className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
+            <Link href="/" className="text-xs text-gray-300 hover:text-white transition-colors">
               ← Back to home
             </Link>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

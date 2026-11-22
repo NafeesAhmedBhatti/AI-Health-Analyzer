@@ -246,11 +246,15 @@ export default function LandingPage() {
           </Link>
 
           <div className="hidden md:flex items-center gap-7">
-            {['Home', 'Features', 'About'].map((item, i) => (
-              <a key={item} href={i === 1 ? '#features' : '#'}
-                className={`text-[13px] transition-colors ${i === 0 ? 'text-white' : 'text-white/40 hover:text-white/80'}`}
+            {[
+              { label: 'Home', href: '#top' },
+              { label: 'Features', href: '#features' },
+              { label: 'About', href: '#about' },
+            ].map((item, i) => (
+              <a key={item.label} href={item.href}
+                className={`text-[13px] transition-colors ${i === 0 ? 'text-white' : 'text-white/60 hover:text-white'}`}
               >
-                {item}
+                {item.label}
               </a>
             ))}
           </div>
@@ -262,7 +266,7 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden p-2 text-white/50">
+          <button onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle navigation menu" className="md:hidden p-2 text-white/70 hover:text-white">
             {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
@@ -270,18 +274,22 @@ export default function LandingPage() {
         {menuOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="md:hidden px-6 py-5 space-y-4"
-            style={{ background: 'rgba(5,8,22,0.95)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-            {['Home', 'Features', 'About'].map((item) => (
-              <a key={item} href="#" onClick={() => setMenuOpen(false)}
-                className="block text-[14px] text-white/60">{item}</a>
+            style={{ background: 'rgba(5,8,22,0.95)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            {[
+              { label: 'Home', href: '#top' },
+              { label: 'Features', href: '#features' },
+              { label: 'About', href: '#about' },
+            ].map((item) => (
+              <a key={item.label} href={item.href} onClick={() => setMenuOpen(false)}
+                className="block text-[14px] text-white/80 hover:text-white">{item.label}</a>
             ))}
-            <Link href="/login" className="block text-[14px] font-semibold text-cyan-400">Get Started →</Link>
+            <Link href="/login" onClick={() => setMenuOpen(false)} className="block text-[14px] font-semibold text-cyan-400">Get Started →</Link>
           </motion.div>
         )}
       </motion.nav>
 
       {/* ══ HERO SECTION ══ */}
-      <section ref={heroRef} className="relative min-h-screen flex items-center pt-20 pb-24" style={{ overflow: 'hidden' }}>
+      <section id="top" ref={heroRef} className="relative min-h-screen flex items-center pt-20 pb-20" style={{ overflow: 'hidden' }}>
         {/* Ambient glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[700px] pointer-events-none" style={{
           background: 'radial-gradient(ellipse, rgba(109,91,255,0.08) 0%, rgba(0,194,255,0.03) 35%, transparent 60%)',
@@ -336,33 +344,23 @@ export default function LandingPage() {
               </motion.p>
 
               {/* Description */}
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.6 }}
-                className="text-[16px] text-[#B8C0D4] max-w-lg mx-auto lg:mx-0 mb-8 leading-relaxed"
-              >
+              <p className="text-[16px] text-[#CBD5E1] max-w-lg mx-auto lg:mx-0 mb-8 leading-relaxed">
                 Upload your reports, describe your symptoms, and get accurate health insights in seconds using advanced AI technology.
-              </motion.p>
+              </p>
 
               {/* Buttons */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.65, duration: 0.6 }}
-                className="flex flex-col sm:flex-row items-center lg:items-start gap-4"
-              >
+              <div className="flex flex-col sm:flex-row items-center lg:items-start gap-4">
                 <Link href="/login" className="group flex items-center gap-2 px-7 py-3.5 rounded-xl text-white font-semibold text-[15px] transition-all duration-300 hover:shadow-[0_0_30px_rgba(0,194,255,0.4)] hover:-translate-y-0.5"
                   style={{ background: 'linear-gradient(135deg, #4F46E5, #00C2FF)' }}>
                   Analyze Now
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </Link>
-<button onClick={() => setVideoOpen(true)} className="group flex items-center gap-2 px-7 py-3.5 rounded-xl text-white/70 font-semibold text-[15px] transition-all duration-300 hover:text-white hover:border-white/30"
-	                  style={{ border: '2px solid rgba(255,255,255,0.15)' }}>
-	                  <Play className="w-4 h-4" />
-	                  Watch Demo
-	                </button>
-              </motion.div>
+                <button onClick={() => setVideoOpen(true)} className="group flex items-center gap-2 px-7 py-3.5 rounded-xl text-white/85 font-semibold text-[15px] transition-all duration-300 hover:text-white hover:border-white/40"
+                  style={{ border: '2px solid rgba(255,255,255,0.2)' }}>
+                  <Play className="w-4 h-4" />
+                  Watch Demo
+                </button>
+              </div>
             </div>
 
             {/* ════ RIGHT: 3D Phone on Ring Stage + Plants ════ */}
@@ -516,13 +514,13 @@ export default function LandingPage() {
                 <Plant mirror />
               </motion.div>
 
-              {/* ── FLOATING CARDS ── */}
+              {/* ── FLOATING CARDS (Desktop/Tablet only so mobile stays clean) ── */}
               {/* Upload Reports — top left */}
               <motion.div
                 initial={{ opacity: 0, x: -30, y: -20 }}
                 animate={{ opacity: 1, x: 0, y: 0 }}
-                transition={{ delay: 1.0, duration: 0.7 }}
-                className="absolute top-[4%] left-[-4%] sm:left-[-10%] float-card-1 z-20"
+                transition={{ delay: 0.4, duration: 0.6 }}
+                className="hidden sm:block absolute top-[6%] left-2 lg:left-0 float-card-1 z-20"
               >
                 <FloatCard icon={Upload} title="Upload Reports" sub="PDF, JPG, PNG" color="#3B82F6"
                   bgTint="rgba(59,130,246,0.08)" />
@@ -532,8 +530,8 @@ export default function LandingPage() {
               <motion.div
                 initial={{ opacity: 0, x: -20, y: 20 }}
                 animate={{ opacity: 1, x: 0, y: 0 }}
-                transition={{ delay: 1.2, duration: 0.7 }}
-                className="absolute bottom-[28%] left-[-4%] sm:left-[-12%] float-card-2 z-20"
+                transition={{ delay: 0.6, duration: 0.6 }}
+                className="hidden sm:block absolute bottom-[26%] left-2 lg:left-0 float-card-2 z-20"
               >
                 <FloatCard icon={Brain} title="AI Analysis" sub="Advanced AI Processing" color="#8B5CF6"
                   bgTint="rgba(139,92,246,0.08)" />
@@ -543,8 +541,8 @@ export default function LandingPage() {
               <motion.div
                 initial={{ opacity: 0, x: 30, y: -10 }}
                 animate={{ opacity: 1, x: 0, y: 0 }}
-                transition={{ delay: 1.4, duration: 0.7 }}
-                className="absolute top-[12%] right-[-4%] sm:right-[-10%] float-card-3 z-20"
+                transition={{ delay: 0.8, duration: 0.6 }}
+                className="hidden sm:block absolute top-[12%] right-2 lg:right-0 float-card-3 z-20"
               >
                 <FloatCard icon={FileCheck} title="Accurate Results" sub="Reliable Health Insights" color="#10B981"
                   bgTint="rgba(16,185,129,0.08)" />
@@ -554,8 +552,8 @@ export default function LandingPage() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 1.6, duration: 0.7 }}
-                className="absolute bottom-[12%] right-[-2%] sm:right-[-8%] float-card-1 z-20"
+                transition={{ delay: 1.0, duration: 0.6 }}
+                className="hidden sm:block absolute bottom-[14%] right-4 lg:right-2 float-card-1 z-20"
               >
                 <div className="w-14 h-14 rounded-xl flex items-center justify-center backdrop-blur-md ai-cube" style={{
                   background: 'rgba(139,92,246,0.12)',
@@ -575,7 +573,7 @@ export default function LandingPage() {
       </section>
 
       {/* ══ FEATURES SECTION ══ */}
-      <section id="features" className="py-24 relative">
+      <section id="features" className="py-24 relative scroll-mt-20">
         <div className="max-w-7xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -605,19 +603,19 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ══ FOOTER ══ */}
-      <footer className="py-8" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+      {/* ══ ABOUT / FOOTER ══ */}
+      <footer id="about" className="py-8 scroll-mt-20" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #4F46E5, #00C2FF)' }}>
               <Sparkles className="w-3 h-3 text-white" />
             </div>
-            <span className="text-[13px] font-bold text-white">Nafexa<span style={{ color: '#00C2FF' }}> AI</span></span>
+            <span className="text-[13px] font-bold text-white">AI Health<span style={{ color: '#00C2FF' }}> Analyzer</span></span>
           </div>
-          <p className="text-[11px] text-white/20">© {new Date().getFullYear()} AI Health Analyzer. For informational purposes only.</p>
-          <div className="flex items-center gap-5 text-[11px] text-white/20">
-            <a href="#" className="hover:text-white/40 transition-colors">Privacy</a>
-            <a href="#" className="hover:text-white/40 transition-colors">Terms</a>
+          <p className="text-[11px] text-white/40 text-center">© {new Date().getFullYear()} AI Health Analyzer. Built by Nafees Ahmed Bhatti · Informational purposes only.</p>
+          <div className="flex items-center gap-5 text-[11px] text-white/40">
+            <Link href="/login" className="hover:text-white/80 transition-colors">Sign In</Link>
+            <Link href="/register" className="hover:text-white/80 transition-colors">Register</Link>
           </div>
         </div>
       </footer>

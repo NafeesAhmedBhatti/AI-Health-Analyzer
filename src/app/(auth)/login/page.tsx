@@ -80,12 +80,7 @@ export default function LoginPage() {
 
       {/* Right side — Login Form */}
       <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md"
-        >
+        <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center shadow-[0_0_20px_rgba(0,212,255,0.2)]">
@@ -160,10 +155,26 @@ export default function LoginPage() {
                 </>
               )}
             </button>
+
+            <button
+              type="button"
+              disabled={loading}
+              onClick={async () => {
+                setError('');
+                setLoading(true);
+                const res = await signIn('credentials', { email: 'demo@aihealth.app', password: 'DemoPass123!', redirect: false });
+                if (res?.ok) router.push('/dashboard');
+                else { setError('Demo sign in failed.'); setLoading(false); }
+              }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-cyan-300 font-semibold text-xs border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 transition"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Try Instant Demo Account
+            </button>
           </form>
 
           <div className="mt-8 text-center">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-400">
               Don&apos;t have an account?{' '}
               <Link href="/register" className="text-neon-blue hover:text-neon-blue/80 font-medium transition-colors">
                 Create one
@@ -172,11 +183,11 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-6 pt-6 border-t border-white/[0.06] text-center">
-            <Link href="/" className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
+            <Link href="/" className="text-xs text-gray-300 hover:text-white transition-colors">
               ← Back to home
             </Link>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

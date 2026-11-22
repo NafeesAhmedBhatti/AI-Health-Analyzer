@@ -7,7 +7,7 @@ import fs from 'fs/promises';
 
 export const maxDuration = 120;
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: process.env.OPENAI_BASE_URL });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'placeholder-key', baseURL: process.env.OPENAI_BASE_URL });
 
 export async function POST(req: NextRequest) {
   try {

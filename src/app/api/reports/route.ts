@@ -5,7 +5,7 @@ import OpenAI from 'openai';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: process.env.OPENAI_BASE_URL });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'placeholder-key', baseURL: process.env.OPENAI_BASE_URL });
 
 export async function GET() {
   try {

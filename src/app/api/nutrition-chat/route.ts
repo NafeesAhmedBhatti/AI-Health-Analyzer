@@ -5,7 +5,7 @@ import { getUserId } from '@/lib/get-user';
 
 export const maxDuration = 60;
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: process.env.OPENAI_BASE_URL });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'placeholder-key', baseURL: process.env.OPENAI_BASE_URL });
 
 export async function POST(req: NextRequest) {
   try {
