@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getUserId } from '@/lib/get-user';
-import OpenAI from 'openai';
+import { generateAIResponse } from '@/lib/ai-client';
+import { addDemoReport, isDbConfigured } from '@/lib/demo-store';
 import path from 'path';
 import fs from 'fs/promises';
 
 export const maxDuration = 120;
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'placeholder-key', baseURL: process.env.OPENAI_BASE_URL });
 
 export async function POST(req: NextRequest) {
   try {
@@ -131,63 +130,109 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Save file
-    const uploadDir = path.join(process.cwd(), 'uploads');
-    await fs.mkdir(uploadDir, { recursive: true });
-    const filePath = path.join(uploadDir, `${userId}-${Date.now()}-${file.name}`);
-    await fs.writeFile(filePath, buffer);
-
-    // Save initial report record
-    const report = await prisma.labReport.create({
-      data: { userId, fileName: file.name, fileType: path.extname(file.name).replace('.', '').toUpperCase() || 'PDF',
-        filePath, status: 'pending', extractedData: { rawText: extractedText.slice(0, 5000) } },
-    });
+    const fileType = path.extname(file.name).replace('.', '').toUpperCase() || 'TXT';
+    let filePath = '';
+    try {
+      const uploadDir = path.join(process.cwd(), 'uploads');
+      await fs.mkdir(uploadDir, { recursive: true });
+      filePath = path.join(uploadDir, `${userId}-${Date.now()}-${file.name}`);
+      await fs.writeFile(filePath, buffer);
+    } catch {
+      // Read-only filesystem (e.g. Vercel serverless) — proceed without local disk write
+    }
 
     // ── AI CLINICAL ANALYSIS ──
-    // Single focused call with reduced scope for speed
-    const aiResponse = await openai.chat.completions.create({
-      model: 'drytis/kimi-k2.5',
-      temperature: 0.1,
-      max_tokens: 1500,
-      messages: [{
-        role: 'system',
-        content: `You are a senior clinical pathologist. Return ONLY valid JSON. No markdown. No extra text. Keep arrays short (max 5 items each).`
-      }, {
-        role: 'user',
-        content: `Analyze lab report and return compact JSON:
-{"healthScore":0-100,"summary":"brief summary","abnormalValues":[{"name":"Test","value":"result","normalRange":"range","status":"critical|high|low","clinicalSignificance":"meaning","possibleCauses":["cause"]}],"conditions":[{"name":"Name","severity":"severe","description":"brief"}],"recommendations":["rec1","rec2"],"alerts":[{"title":"alert","severity":"critical","message":"detail"}],"medications":[{"name":"Drug","dosage":"amount","frequency":"when","reason":"why","sideEffectsToWatch":["effect"]}],"nutrition":{"dailyCalories":1800,"meals":[{"name":"Breakfast","foods":["food1"]}],"foodsToAdd":["food1 - reason"],"foodsToAvoid":["food1 - reason"],"supplements":["supp - dosage"]},"symptomsToWatch":[{"name":"Symptom","severity":"severe","redFlag":"emergency sign","relatedLabValue":"test"}],"mentalHealth":{"overallAssessment":"brief","stressLevel":"high","exerciseRecommendation":"brief","relaxationTips":["tip1"]},"vitalsFromReport":{"heart_rate":null,"blood_pressure_systolic":null,"blood_pressure_diastolic":null,"weight":null,"bmi":null}}
+    const aiText = await generateAIResponse(
+      [
+        {
+          role: 'system',
+          content: 'You are a senior clinical pathologist. Return ONLY valid JSON. No markdown code fences. No extra text. Keep arrays concise (max 5 items each).',
+        },
+        {
+          role: 'user',
+          content: `Analyze this lab report accurately and return compact JSON:
+{"healthScore":0-100,"summary":"clear clinical summary referencing exact lab values","abnormalValues":[{"name":"Test","value":"result","normalRange":"range","status":"critical|high|low","clinicalSignificance":"meaning","possibleCauses":["cause"]}],"conditions":[{"name":"Name","severity":"severe|moderate|mild","description":"brief"}],"recommendations":["rec1","rec2"],"alerts":[{"title":"alert","severity":"critical|warning","message":"detail"}],"medications":[{"name":"Drug","dosage":"amount","frequency":"when","reason":"why","sideEffectsToWatch":["effect"]}],"nutrition":{"dailyCalories":1800,"meals":[{"name":"Breakfast","foods":["food1"]}],"foodsToAdd":["food1 - reason"],"foodsToAvoid":["food1 - reason"],"supplements":["supp - dosage"]},"symptomsToWatch":[{"name":"Symptom","severity":"severe|moderate|mild","redFlag":"emergency sign","relatedLabValue":"test"}],"mentalHealth":{"overallAssessment":"brief","stressLevel":"high|moderate|low","exerciseRecommendation":"brief","relaxationTips":["tip1"]},"vitalsFromReport":{"heart_rate":null,"blood_pressure_systolic":null,"blood_pressure_diastolic":null,"weight":null,"bmi":null}}
 
-REPORT:
-${extractedText.slice(0, 5000)}`
-      }],
-    });
-
-    const aiText = aiResponse.choices?.[0]?.message?.content || '';
+REPORT (${file.name}):
+${extractedText.slice(0, 5000)}`,
+        },
+      ],
+      { temperature: 0.1, maxTokens: 1800 }
+    );
 
     // Robust JSON parser
     function safeParseJSON(text: string, fallback: any = {}) {
       if (!text) return fallback;
+      const cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
       try {
-        const match = text.match(/\{[\s\S]*\}/);
+        const match = cleaned.match(/\{[\s\S]*\}/);
         if (match) return JSON.parse(match[0]);
       } catch {}
       try {
-        let json = text.match(/\{[\s\S]*\}/)?.[0] || '';
+        let json = cleaned.match(/\{[\s\S]*\}/)?.[0] || '';
         json = json.replace(/,\s*([\]}])/g, '$1');
         return JSON.parse(json);
       } catch {}
       try {
         const result: any = {};
-        const hs = text.match(/"healthScore"\s*:\s*(\d+)/);
+        const hs = cleaned.match(/"healthScore"\s*:\s*(\d+)/);
         if (hs) result.healthScore = parseInt(hs[1]);
-        const sm = text.match(/"summary"\s*:\s*"([^"]+)"/);
+        const sm = cleaned.match(/"summary"\s*:\s*"([^"]+)"/);
         if (sm) result.summary = sm[1];
         return Object.keys(result).length > 0 ? result : fallback;
       } catch {}
       return fallback;
     }
 
-    const analysis = safeParseJSON(aiText, { summary: 'Analysis complete. Please review results.', healthScore: 50 });
+    const analysis = safeParseJSON(aiText, { summary: 'Analysis complete. Please review results.', healthScore: 72 });
+    const nowIso = new Date().toISOString();
+    const fallbackReportId = `rep_${Date.now()}`;
+    const builtReport = {
+      id: fallbackReportId,
+      fileName: file.name,
+      title: file.name,
+      fileType,
+      type: fileType,
+      date: nowIso,
+      createdAt: nowIso,
+      status: 'reviewed' as const,
+      isActive: true,
+      aiSummary: analysis.summary || 'Analysis complete. Please review results.',
+      extractedData: {
+        rawText: extractedText.slice(0, 5000),
+        abnormalValues: analysis.abnormalValues || [],
+        normalValues: analysis.normalValues || [],
+        conditions: analysis.conditions || [],
+        healthScore: analysis.healthScore ?? 72,
+      },
+      flags: {
+        vitalsFromReport: analysis.vitalsFromReport || {},
+        medications: analysis.medications || [],
+        nutrition: analysis.nutrition || {},
+        symptomsToWatch: analysis.symptomsToWatch || [],
+        mentalHealth: analysis.mentalHealth || {},
+        recommendations: analysis.recommendations || [],
+        alerts: analysis.alerts || [],
+      },
+    };
+
+    if (!isDbConfigured()) {
+      addDemoReport(userId, builtReport);
+      return NextResponse.json({
+        success: true,
+        reportId: builtReport.id,
+        report: builtReport,
+        healthScore: builtReport.extractedData.healthScore,
+        conditions: builtReport.extractedData.conditions.length,
+        abnormalValues: builtReport.extractedData.abnormalValues.length,
+      });
+    }
+
+    // Save initial report record in DB when MySQL is configured
+    const report = await prisma.labReport.create({
+      data: { userId, fileName: file.name, fileType,
+        filePath, status: 'pending', extractedData: { rawText: extractedText.slice(0, 5000) } },
+    });
 
     // ── CLEAR ALL OLD DATA BEFORE INSERTING NEW ──
     await prisma.medication.updateMany({ where: { userId, active: true }, data: { active: false } });

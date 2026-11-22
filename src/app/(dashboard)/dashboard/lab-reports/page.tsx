@@ -42,11 +42,18 @@ export default function LabReportsPage() {
   const fetchReports = useCallback(async () => {
     try {
       const res = await fetch('/api/lab-reports');
-      if (res.ok) {
-        const data = await res.json();
-        setReports(Array.isArray(data) ? data : data.reports || []);
+      const serverReports: LabReport[] = res.ok ? await res.json().then(d => (Array.isArray(d) ? d : d.reports || [])) : [];
+      let localReports: LabReport[] = [];
+      try {
+        const saved = localStorage.getItem('aha_demo_reports');
+        if (saved) localReports = JSON.parse(saved);
+      } catch {}
+      const seen = new Set(serverReports.map(r => r.id));
+      const merged = [...serverReports, ...localReports.filter(r => !seen.has(r.id))];
+      setReports(merged);
+      if (merged.length > 0) {
+        setActiveReportId(prev => prev || merged[0].id);
       }
-      // Get active report
       const dashRes = await fetch('/api/dashboard');
       if (dashRes.ok) {
         const dashData = await dashRes.json();
@@ -76,10 +83,19 @@ export default function LabReportsPage() {
       const res = await fetch('/api/lab-reports/upload', { method: 'POST', body: formData });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Upload failed');
-      setUploadProgress('Analysis complete! Redirecting...');
+      setUploadProgress('Analysis complete!');
+      if (data.report) {
+        setReports(prev => {
+          const next = [data.report, ...prev.filter(r => r.id !== data.report.id)];
+          try { localStorage.setItem('aha_demo_reports', JSON.stringify(next.slice(0, 15))); } catch {}
+          return next;
+        });
+      } else {
+        await fetchReports();
+      }
       setActiveReportId(data.reportId);
-      await fetchReports();
-      router.push('/dashboard');
+      setExpandedReport(data.reportId);
+      toast.success('Lab report analyzed successfully!');
     } catch (err: unknown) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
