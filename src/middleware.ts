@@ -3,6 +3,13 @@ import { getToken } from 'next-auth/jwt';
 
 const AUTH_SECRET = process.env.NEXTAUTH_SECRET || 'ai-health-analyzer-jwt-secret-key';
 
+async function getAuthToken(req: NextRequest) {
+  const tSecure = await getToken({ req, secret: AUTH_SECRET, secureCookie: true }).catch(() => null);
+  if (tSecure) return tSecure;
+  const tPlain = await getToken({ req, secret: AUTH_SECRET, secureCookie: false }).catch(() => null);
+  return tPlain;
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -14,9 +21,8 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/api/auth/');
 
   if (isPublicRoute) {
-    // If already logged in and trying to access login/register, redirect to dashboard
-    if ((pathname.startsWith('/login') || pathname.startsWith('/register'))) {
-      const token = await getToken({ req, secret: AUTH_SECRET });
+    if (pathname.startsWith('/login') || pathname.startsWith('/register')) {
+      const token = await getAuthToken(req);
       if (token) {
         return NextResponse.redirect(new URL('/dashboard', req.url));
       }
@@ -27,7 +33,7 @@ export async function middleware(req: NextRequest) {
   // API routes: pass through — API handles auth internally via getUserId()
   if (pathname.startsWith('/api/')) {
     const response = NextResponse.next();
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    const token = await getAuthToken(req);
     if (token?.id) {
       response.headers.set('x-user-id', token.id as string);
     }
@@ -35,16 +41,14 @@ export async function middleware(req: NextRequest) {
   }
 
   // Dashboard routes: check for authentication
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const token = await getAuthToken(req);
 
   if (!token) {
-    // Redirect to login page
     const loginUrl = new URL('/login', req.url);
     loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Add user ID header for downstream use
   const response = NextResponse.next();
   response.headers.set('x-user-id', token.id as string);
   return response;
