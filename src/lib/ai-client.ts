@@ -7,9 +7,9 @@ export interface ChatMessage {
 
 export async function generateAIResponse(
   messages: ChatMessage[],
-  options: { temperature?: number; maxTokens?: number } = {}
+  options: { temperature?: number; maxTokens?: number; jsonMode?: boolean } = {}
 ): Promise<string> {
-  const { temperature = 0.7, maxTokens = 1000 } = options;
+  const { temperature = 0.7, maxTokens = 1000, jsonMode = false } = options;
 
   // 1. Try OpenAI-compatible provider if configured
   const openaiKey = process.env.OPENAI_API_KEY;
@@ -56,25 +56,37 @@ export async function generateAIResponse(
 
     const payload: Record<string, unknown> = {
       contents,
-      generationConfig: { temperature, maxOutputTokens: maxTokens },
+      generationConfig: {
+        temperature,
+        maxOutputTokens: maxTokens,
+        ...(jsonMode ? { responseMimeType: 'application/json' } : {}),
+      },
     };
     if (systemInstruction) {
       payload.systemInstruction = { parts: [{ text: systemInstruction }] };
     }
 
     for (const model of ['gemini-3.5-flash-lite', 'gemini-3.8-flash']) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(geminiKey)}`;
-        const r = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const json = await r.json();
-        const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (r.ok && text) return text;
-      } catch (e) {
-        console.warn(`[AI Client] Gemini ${model} error:`, e);
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(geminiKey)}`;
+          const r = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const json = await r.json();
+          const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (r.ok && text) return text;
+          if ((r.status === 429 || r.status >= 500) && attempt === 0) {
+            await new Promise((res) => setTimeout(res, 1200));
+            continue;
+          }
+          break;
+        } catch (e) {
+          console.warn(`[AI Client] Gemini ${model} error:`, e);
+          break;
+        }
       }
     }
   }

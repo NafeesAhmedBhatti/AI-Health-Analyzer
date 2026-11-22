@@ -142,49 +142,109 @@ export async function POST(req: NextRequest) {
     }
 
     // ── AI CLINICAL ANALYSIS ──
-    const aiText = await generateAIResponse(
-      [
-        {
-          role: 'system',
-          content: 'You are a senior clinical pathologist. Return ONLY valid JSON. No markdown code fences. No extra text. Keep arrays concise (max 5 items each).',
-        },
-        {
-          role: 'user',
-          content: `Analyze this lab report accurately and return compact JSON:
+    let aiText = '';
+    try {
+      aiText = await generateAIResponse(
+        [
+          {
+            role: 'system',
+            content: 'You are a senior clinical pathologist. Return ONLY valid JSON. No markdown code fences. No extra text. Keep arrays concise (max 5 items each).',
+          },
+          {
+            role: 'user',
+            content: `Analyze this lab report accurately and return compact JSON:
 {"healthScore":0-100,"summary":"clear clinical summary referencing exact lab values","abnormalValues":[{"name":"Test","value":"result","normalRange":"range","status":"critical|high|low","clinicalSignificance":"meaning","possibleCauses":["cause"]}],"conditions":[{"name":"Name","severity":"severe|moderate|mild","description":"brief"}],"recommendations":["rec1","rec2"],"alerts":[{"title":"alert","severity":"critical|warning","message":"detail"}],"medications":[{"name":"Drug","dosage":"amount","frequency":"when","reason":"why","sideEffectsToWatch":["effect"]}],"nutrition":{"dailyCalories":1800,"meals":[{"name":"Breakfast","foods":["food1"]}],"foodsToAdd":["food1 - reason"],"foodsToAvoid":["food1 - reason"],"supplements":["supp - dosage"]},"symptomsToWatch":[{"name":"Symptom","severity":"severe|moderate|mild","redFlag":"emergency sign","relatedLabValue":"test"}],"mentalHealth":{"overallAssessment":"brief","stressLevel":"high|moderate|low","exerciseRecommendation":"brief","relaxationTips":["tip1"]},"vitalsFromReport":{"heart_rate":null,"blood_pressure_systolic":null,"blood_pressure_diastolic":null,"weight":null,"bmi":null}}
 
 REPORT (${file.name}):
 ${extractedText.slice(0, 5000)}`,
-        },
-      ],
-      { temperature: 0.1, maxTokens: 1800 }
-    );
+          },
+        ],
+        { temperature: 0.1, maxTokens: 4096, jsonMode: true }
+      );
+    } catch (aiErr) {
+      console.warn('[Lab Upload] AI provider unavailable, using deterministic lab parser:', aiErr);
+    }
+
+    // Deterministic clinical parser fallback if AI fails or returns incomplete JSON
+    function buildDeterministicAnalysis(rawText: string) {
+      const abnormalValues: any[] = [];
+      const lines = rawText.split(/\r?\n/);
+      for (const line of lines) {
+        const flagMatch = line.match(/\[(CRITICAL\s*LOW|CRITICAL\s*HIGH|CRITICAL|HIGH|LOW|ABNORMAL)\]/i);
+        if (!flagMatch) continue;
+        const rawFlag = flagMatch[1].toUpperCase();
+        const status = rawFlag.includes('CRITICAL') ? 'critical' : rawFlag.includes('LOW') ? 'low' : 'high';
+        const parts = line.split(':');
+        if (parts.length < 2) continue;
+        const name = parts[0].trim();
+        const rest = parts.slice(1).join(':');
+        const rangeMatch = rest.match(/\(Reference Range:\s*([^)]+)\)/i);
+        const normalRange = rangeMatch ? rangeMatch[1].trim() : 'See lab reference';
+        const value = rest.replace(/\(Reference Range:[^)]+\)/i, '').replace(/\[[^\]]+\]/g, '').trim();
+        abnormalValues.push({
+          name,
+          value,
+          normalRange,
+          status,
+          clinicalSignificance: `${name} is ${rawFlag.toLowerCase()} (${value} vs normal ${normalRange}).`,
+          possibleCauses: ['Requires clinical correlation with physician'],
+        });
+      }
+
+      const lower = rawText.toLowerCase();
+      const conditions: any[] = [];
+      if (lower.includes('hemoglobin') && (lower.includes('ferritin') || lower.includes('mcv')) && abnormalValues.some(v => /hemoglobin|ferritin/i.test(v.name))) {
+        conditions.push({ name: 'Iron Deficiency Anemia', severity: 'moderate', description: 'Low hemoglobin, MCV, and/or ferritin consistent with microcytic iron-deficiency anemia.' });
+      }
+      if ((lower.includes('hba1c') || lower.includes('glucose')) && abnormalValues.some(v => /hba1c|glucose/i.test(v.name))) {
+        conditions.push({ name: 'Hyperglycemia / Diabetes Mellitus', severity: 'moderate', description: 'Elevated fasting glucose and/or HbA1c above normal glycemic targets.' });
+      }
+      if ((lower.includes('ldl') || lower.includes('triglyceride') || lower.includes('cholesterol')) && abnormalValues.some(v => /ldl|cholesterol|triglyceride/i.test(v.name))) {
+        conditions.push({ name: 'Dyslipidemia / Hyperlipidemia', severity: 'moderate', description: 'Elevated atherogenic lipids (LDL/triglycerides) or reduced HDL.' });
+      }
+      if ((lower.includes('tsh') || lower.includes('t4')) && abnormalValues.some(v => /tsh|t4|t3/i.test(v.name))) {
+        conditions.push({ name: 'Thyroid Dysfunction', severity: 'moderate', description: 'Abnormal TSH and/or thyroid hormone levels.' });
+      }
+      if ((lower.includes('alt') || lower.includes('ast')) && abnormalValues.some(v => /alt|ast/i.test(v.name))) {
+        conditions.push({ name: 'Mild Hepatocellular Elevation', severity: 'mild', description: 'Elevated liver transaminases (ALT/AST).' });
+      }
+
+      const healthScore = Math.max(35, Math.min(95, 88 - abnormalValues.length * 7));
+      const summary = abnormalValues.length > 0
+        ? `Identified ${abnormalValues.length} abnormal marker(s) (${abnormalValues.slice(0, 4).map(a => `${a.name}: ${a.value}`).join(', ')})${conditions.length > 0 ? ` consistent with ${conditions.map(c => c.name).join(' and ')}` : ''}. Please review these results with your physician.`
+        : 'Lab report processed. No flagged abnormal biomarkers were detected in the extracted text.';
+
+      return {
+        healthScore,
+        summary,
+        abnormalValues: abnormalValues.slice(0, 8),
+        conditions,
+        recommendations: ['Discuss abnormal biomarkers with your primary care physician', 'Schedule appropriate follow-up lab monitoring'],
+      };
+    }
 
     // Robust JSON parser
-    function safeParseJSON(text: string, fallback: any = {}) {
+    function safeParseJSON(text: string, fallback: any) {
       if (!text) return fallback;
       const cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
       try {
         const match = cleaned.match(/\{[\s\S]*\}/);
-        if (match) return JSON.parse(match[0]);
+        if (match) {
+          const parsed = JSON.parse(match[0]);
+          if (parsed && parsed.summary && Array.isArray(parsed.abnormalValues)) return parsed;
+        }
       } catch {}
       try {
         let json = cleaned.match(/\{[\s\S]*\}/)?.[0] || '';
         json = json.replace(/,\s*([\]}])/g, '$1');
-        return JSON.parse(json);
-      } catch {}
-      try {
-        const result: any = {};
-        const hs = cleaned.match(/"healthScore"\s*:\s*(\d+)/);
-        if (hs) result.healthScore = parseInt(hs[1]);
-        const sm = cleaned.match(/"summary"\s*:\s*"([^"]+)"/);
-        if (sm) result.summary = sm[1];
-        return Object.keys(result).length > 0 ? result : fallback;
+        const parsed = JSON.parse(json);
+        if (parsed && parsed.summary) return parsed;
       } catch {}
       return fallback;
     }
 
-    const analysis = safeParseJSON(aiText, { summary: 'Analysis complete. Please review results.', healthScore: 72 });
+    const fallbackAnalysis = buildDeterministicAnalysis(extractedText);
+    const analysis = safeParseJSON(aiText, fallbackAnalysis);
     const nowIso = new Date().toISOString();
     const fallbackReportId = `rep_${Date.now()}`;
     const builtReport = {
